@@ -1,8 +1,20 @@
 import asyncio
 from pathlib import Path
+import time
 
-from src.files import get_gifts_urls
+from telethon import TelegramClient
+
+from src.files import get_gifts_urls, write_gifts
 from src.web import get_gift_info
+
+API_ID = 0
+API_HASH = "111111abcdef111111abcdef111111abcdef"
+PREMIUM_ONLY = True # True/False
+THREADS = 10 # Кол-во потоков
+
+client = TelegramClient(Path("sessions", "account"), API_ID, API_HASH)
+sem = asyncio.Semaphore(THREADS)
+results = []
 
 
 def setup_config():
@@ -17,16 +29,47 @@ def setup_config():
         gifts_file.touch()
 
 
+async def parser(gift_url: str):
+    async with sem:
+        data = await get_gift_info(gift_url)
+        slug = gift_url.split("/")[-1]
+        owner_url = data.get("owner_url", None)
+        if not owner_url:
+            return
+
+        entity = await client.get_entity(owner_url)
+        if not entity:
+            return
+        print(
+            f"[{slug}]\tUsername: @{entity.username}\tPremium: {entity.premium}"
+        )
+        if (not entity.premium) and PREMIUM_ONLY:
+            return
+        if not entity.username:
+            return
+        results.append(f"https://t.me/{entity.username}")
+
+
 async def main():
     setup_config()
     gifts = get_gifts_urls()
     if not gifts:
-        return print("No gifts found in `gifts.txt`")
+        return print("Подарки не найдены в файле `gifts.txt`")
 
-    for gift in gifts:
-        data = await get_gift_info(gift)
-        slug = gift.split("/")[-1]
-        print(slug, data.get("owner_url"))
+    try:
+        await client.start()
+
+        tasks = []
+        for gift in gifts:
+            tasks.append(asyncio.create_task(parser(gift)))
+        await asyncio.gather(*tasks)
+
+        result_file_name = "users_premium" if PREMIUM_ONLY else "users"
+        result_file_name += f"_{int(time.time())}.txt"
+        write_gifts(results, Path("results", result_file_name))
+        print(f"Записано {len(results)} строк в файл `{result_file_name}`")
+    finally:
+        await client.disconnect()
 
 
 if __name__ == "__main__":

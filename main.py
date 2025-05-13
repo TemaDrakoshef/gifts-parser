@@ -9,8 +9,8 @@ from src.web import get_gift_info
 
 API_ID = 0
 API_HASH = "111111abcdef111111abcdef111111abcdef"
-PREMIUM_ONLY = True # True/False
-THREADS = 10 # Кол-во потоков
+PREMIUM_ONLY = True  # True/False
+THREADS = 10  # Кол-во потоков
 
 client = TelegramClient(Path("sessions", "account"), API_ID, API_HASH)
 sem = asyncio.Semaphore(THREADS)

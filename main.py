@@ -47,7 +47,9 @@ async def parser(gift_url: str):
             return
         if not entity.username:
             return
-        results.append(f"https://t.me/{entity.username}")
+        results.append(
+            f"{entity.first_name or ''} {entity.last_name or ''}https://t.me/{entity.username}"
+        )
 
 
 async def main():

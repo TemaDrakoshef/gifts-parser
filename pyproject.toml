@@ -2,6 +2,7 @@
 name = "gifts-parser"
 version = "0.1.0"
 description = "Add your description here"
+authors = [{name = "TemaDrakoshef", email = "artem125149@gmail.com"}]
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

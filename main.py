@@ -1,52 +1,66 @@
 import asyncio
+import random
 from pathlib import Path
 import time
 
-from telethon import TelegramClient
+from telethon import TelegramClient, errors
 
-from config import API_HASH, API_ID, PREMIUM_ONLY, THREADS
+from config import PREMIUM_ONLY, THREADS
 from src.files import get_gifts_urls, write_gifts
+from src.telegram import disconnect_clients, fetch_clients
 from src.web import get_gift_info
 
-
-client = TelegramClient(Path("sessions", "account"), API_ID, API_HASH)
 sem = asyncio.Semaphore(THREADS)
 results = []
+processed_slugs = set()
 
 
 def setup_config():
-    results = Path("results")
-    if not results.exists():
-        results.mkdir()
-    sessions = Path("sessions")
-    if not sessions.exists():
-        sessions.mkdir()
-    gifts_file = Path("gifts.txt")
-    if not gifts_file.exists():
-        gifts_file.touch()
+    Path("results").mkdir(exist_ok=True)
+    Path("sessions").mkdir(exist_ok=True)
+    Path("gifts.txt").touch(exist_ok=True)
 
 
-async def parser(gift_url: str):
+async def parser(client: TelegramClient, gift_url: str) -> bool:
     async with sem:
-        data = await get_gift_info(gift_url)
         slug = gift_url.split("/")[-1]
-        owner_url = data.get("owner_url", None)
-        if not owner_url:
-            return
+        if slug in processed_slugs:
+            return True
 
-        entity = await client.get_entity(owner_url)
-        if not entity:
-            return
-        print(
-            f"[{slug}]\tUsername: @{entity.username}\tPremium: {entity.premium}"
-        )
-        if (not entity.premium) and PREMIUM_ONLY:
-            return
-        if not entity.username:
-            return
-        results.append(
-            f"{entity.first_name or ''} {entity.last_name or ''}https://t.me/{entity.username}"
-        )
+        try:
+            data = await get_gift_info(gift_url)
+            owner_url = data.get("owner_url")
+            if not owner_url:
+                return True
+
+            entity = await client.get_entity(owner_url)
+            if not entity or not entity.username:
+                return True
+
+            print(
+                f"[{slug}] Username: @{entity.username} Premium: {entity.premium}"
+            )
+            if PREMIUM_ONLY and not entity.premium:
+                return True
+
+            results.append(
+                f"{entity.first_name or ''} {entity.last_name or ''}https://t.me/{entity.username}"
+            )
+            processed_slugs.add(slug)
+            return True
+
+        except (
+            errors.FloodWaitError,
+            errors.AuthKeyUnregisteredError,
+            errors.UserDeactivatedError,
+            errors.rpcerrorlist.AuthKeyInvalidError,
+        ) as e:
+            print(f"[{slug}] Аккаунт заблокирован или не авторизован: {e}")
+            return False
+
+        except Exception as e:
+            print(f"[{slug}] Ошибка при парсинге: {e}")
+            return True
 
 
 async def main():
@@ -55,20 +69,47 @@ async def main():
     if not gifts:
         return print("Подарки не найдены в файле `gifts.txt`")
 
-    try:
-        await client.start()
+    all_clients = await fetch_clients()
+    if not all_clients:
+        return print("Нет авторизованных клиентов в папке `sessions`.")
+    clients = random.sample(all_clients, len(all_clients))
 
-        tasks = []
-        for gift in gifts:
-            tasks.append(asyncio.create_task(parser(gift)))
-        await asyncio.gather(*tasks)
+    try:
+        gift_queue = [gift for gift in gifts]
+        current_gift_index = 0
+
+        for client in clients:
+            print(f"▶ Используется аккаунт: {client.session.filename}")
+
+            while current_gift_index < len(gift_queue):
+                gift_url = gift_queue[current_gift_index]
+                success = await parser(client, gift_url)
+
+                if not success:
+                    print(
+                        "⚠️ Проблемы с аккаунтом, переключаюсь на следующий..."
+                    )
+                    break
+
+                current_gift_index += 1
+
+            if current_gift_index >= len(gift_queue):
+                break
+
+        if current_gift_index < len(gift_queue):
+            print(
+                f"❌ Не удалось обработать {len(gift_queue) - current_gift_index} подарков — закончились аккаунты."
+            )
+        else:
+            print("✅ Все подарки обработаны.")
 
         result_file_name = "users_premium" if PREMIUM_ONLY else "users"
         result_file_name += f"_{int(time.time())}.txt"
         write_gifts(results, Path("results", result_file_name))
-        print(f"Записано {len(results)} строк в файл `{result_file_name}`")
+        print(f"💾 Записано {len(results)} строк в файл `{result_file_name}`")
+
     finally:
-        await client.disconnect()
+        await disconnect_clients(clients)
 
 
 if __name__ == "__main__":

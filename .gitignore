@@ -12,3 +12,6 @@ wheels/
 results/
 sessions/
 gifts.txt
+
+.repomix/
+repomix-output.txt

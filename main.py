@@ -9,6 +9,7 @@ from config import PREMIUM_ONLY, THREADS
 from src.files import get_gifts_urls, write_gifts
 from src.telegram import disconnect_clients, fetch_clients
 from src.web import get_gift_info
+from src.utils import logo
 
 sem = asyncio.Semaphore(THREADS)
 results = []
@@ -66,6 +67,7 @@ async def parser(client: TelegramClient, gift_url: str) -> bool:
 async def main():
     setup_config()
     gifts = get_gifts_urls()
+    print(logo)
     if not gifts:
         return print("Подарки не найдены в файле `gifts.txt`")
 

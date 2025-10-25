@@ -52,6 +52,17 @@ https://t.me/nft/LunarSnake-90053
 https://t.me/nft/LunarSnake-90054
 ```
 
+### 3. Configure `config.py`
+
+You can customize the script's behavior by editing the `config.py` file.
+
+| Setting        | Description                                                                                                                            | Default Value |
+|----------------|----------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| `API_ID`       | Your Telegram application's API ID. You can get this from [my.telegram.org/apps](https://my.telegram.org/apps/).                               | `8257218`     |
+| `API_HASH`     | Your Telegram application's API Hash. You can get this from [my.telegram.org/apps](https://my.telegram.org/apps/).                             | `0558e867...` |
+| `PREMIUM_ONLY` | If set to `True`, only users with a Telegram Premium subscription will be saved. Set to `False` to save all users.                       | `True`        |
+| `THREADS`      | The number of concurrent threads to use for processing links. A higher number can speed up parsing but may increase the risk of rate-limiting. | `10`          |
+
 ## 🚀 Installation and Launch
 
 ### Using `pip` (Standard)

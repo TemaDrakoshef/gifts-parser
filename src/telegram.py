@@ -1,13 +1,18 @@
 import asyncio
 from pathlib import Path
+
 from telethon import TelegramClient
 
-from config import API_ID, API_HASH
+from config import API_HASH, API_ID
 
 
 async def fetch_clients(
     sessions_path: str | Path = Path("sessions"),
 ) -> list[TelegramClient]:
+    """
+    Fetches and initializes Telegram clients from session files.
+    Returns a list of clients.
+    """
     sessions_path = Path(sessions_path)
     if not sessions_path.exists():
         raise FileNotFoundError(
@@ -25,6 +30,10 @@ async def fetch_clients(
 
 
 async def start_client(client: TelegramClient) -> None:
+    """
+    Starts the provided Telegram client.
+    Returns the client if authorized, else None.
+    """
     if not client.is_connected():
         await client.connect()
     is_authorized = await client.is_user_authorized()
@@ -37,6 +46,7 @@ async def start_client(client: TelegramClient) -> None:
 async def disconnect_clients(
     clients: list[TelegramClient],
 ) -> None:
+    """Disconnects all provided Telegram clients."""
     for client in clients:
         if not client or not client.is_connected():
             continue

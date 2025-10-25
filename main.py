@@ -1,15 +1,15 @@
 import asyncio
 import random
-from pathlib import Path
 import time
+from pathlib import Path
 
 from telethon import TelegramClient, errors
 
 from config import PREMIUM_ONLY, THREADS
 from src.files import get_gifts_urls, write_gifts
 from src.telegram import disconnect_clients, fetch_clients
-from src.web import get_gift_info
 from src.utils import logo
+from src.web import get_gift_info
 
 sem = asyncio.Semaphore(THREADS)
 results = []
@@ -17,12 +17,17 @@ processed_slugs = set()
 
 
 def setup_config():
+    """Creates necessary directories and files."""
     Path("results").mkdir(exist_ok=True)
     Path("sessions").mkdir(exist_ok=True)
     Path("gifts.txt").touch(exist_ok=True)
 
 
 async def parser(client: TelegramClient, gift_url: str) -> bool:
+    """
+    Parses a single gift URL using the provided Telegram client.
+    Returns True if successful, else False.
+    """
     async with sem:
         slug = gift_url.split("/")[-1]
         if slug in processed_slugs:
@@ -65,6 +70,10 @@ async def parser(client: TelegramClient, gift_url: str) -> bool:
 
 
 async def main():
+    """
+    Main function to run the script.
+    Initializes config, fetches gifts and clients, and processes gifts.
+    """
     setup_config()
     gifts = get_gifts_urls()
     print(logo)

@@ -1,9 +1,9 @@
-from httpx import AsyncClient
 from bs4 import BeautifulSoup
-from typing import Dict, Optional
+from httpx import AsyncClient
 
 
-async def get_gift_info(gift_url: str) -> Dict[str, Optional[str]]:
+async def get_gift_info(gift_url: str) -> dict[str, str | None]:
+    """Fetches and parses gift information from the provided URL."""
     async with AsyncClient() as client:
         response = await client.get(gift_url)
         if response.status_code != 200:
